@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from streamlit_option_menu import option_menu
-
+import os
 
 from data_store import *
 from volunteer_matching import match_volunteers
@@ -10,17 +10,25 @@ from gemini_ai import setup_gemini, ai_recommendation
 from disaster_map import show_map
 
 
-# Configure Gemini AI
-from dotenv import load_dotenv
-import os
-load_dotenv()
-import streamlit as st
-import os
+# -------------------------------
+# Gemini API Key Setup
+# Works for local (.env) and cloud (st.secrets)
+# -------------------------------
 
-api_key = os.getenv("GEMINI_API_KEY") or st.secrets.get("GEMINI_API_KEY")
+api_key = os.getenv("GEMINI_API_KEY")
 
-setup_gemini(api_key)
+if not api_key:
+    api_key = st.secrets.get("GEMINI_API_KEY", None)
 
+if api_key:
+    setup_gemini(api_key)
+else:
+    st.warning("Gemini API Key not found. AI features will not work.")
+
+
+# -------------------------------
+# Streamlit Page Setup
+# -------------------------------
 
 st.set_page_config(page_title="ResQAI", layout="wide")
 
@@ -28,20 +36,23 @@ st.title("🚑 ResQAI")
 st.subheader("AI Powered Volunteer & Resource Coordination Platform")
 
 
+# -------------------------------
 # Sidebar Navigation
+# -------------------------------
+
 with st.sidebar:
 
     selected = option_menu(
         "Navigation",
-        ["Volunteers","Tasks","Resources","AI Matching","Dashboard"],
-        icons=["people","list-task","box","cpu","speedometer"],
+        ["Volunteers", "Tasks", "Resources", "AI Matching", "Dashboard"],
+        icons=["people", "list-task", "box", "cpu", "speedometer"],
         default_index=0,
     )
 
 
-# ==========================
+# ================================
 # Volunteers Section
-# ==========================
+# ================================
 
 if selected == "Volunteers":
 
@@ -50,11 +61,11 @@ if selected == "Volunteers":
     name = st.text_input("Name")
     location = st.text_input("Location")
     skills = st.text_input("Skills")
-    availability = st.number_input("Availability (hours)",1,24)
+    availability = st.number_input("Availability (hours)", 1, 24)
 
     if st.button("Register Volunteer"):
 
-        add_volunteer(name,location,skills,availability)
+        add_volunteer(name, location, skills, availability)
 
         st.success("Volunteer Registered")
 
@@ -88,14 +99,12 @@ if selected == "Volunteers":
     volunteers_df = get_volunteers()
 
     if not volunteers_df.empty:
-
         st.dataframe(volunteers_df)
 
 
-
-# ==========================
+# ================================
 # Tasks Section
-# ==========================
+# ================================
 
 elif selected == "Tasks":
 
@@ -104,8 +113,8 @@ elif selected == "Tasks":
     task_name = st.text_input("Task Name")
     location = st.text_input("Location")
     skill_required = st.text_input("Skill Required")
-    volunteers_needed = st.number_input("Volunteers Needed",1,20)
-    priority = st.selectbox("Priority",["Low","Medium","High"])
+    volunteers_needed = st.number_input("Volunteers Needed", 1, 20)
+    priority = st.selectbox("Priority", ["Low", "Medium", "High"])
 
     if st.button("Create Task"):
 
@@ -148,28 +157,25 @@ elif selected == "Tasks":
     tasks_df = get_tasks()
 
     if not tasks_df.empty:
-
         st.subheader("Current Tasks")
-
         st.dataframe(tasks_df)
 
 
-
-# ==========================
+# ================================
 # Resources Section
-# ==========================
+# ================================
 
 elif selected == "Resources":
 
     st.header("Add Resources")
 
     resource_name = st.text_input("Resource Name")
-    quantity = st.number_input("Quantity",1,1000)
+    quantity = st.number_input("Quantity", 1, 1000)
     location = st.text_input("Location")
 
     if st.button("Add Resource"):
 
-        add_resource(resource_name,quantity,location)
+        add_resource(resource_name, quantity, location)
 
         st.success("Resource Added")
 
@@ -179,7 +185,6 @@ elif selected == "Resources":
     if not resources_df.empty:
 
         st.subheader("Current Resources")
-
         st.dataframe(resources_df)
 
         st.subheader("Resource Priority")
@@ -189,10 +194,9 @@ elif selected == "Resources":
         st.dataframe(pd.DataFrame(optimized))
 
 
-
-# ==========================
+# ================================
 # AI Matching Section
-# ==========================
+# ================================
 
 elif selected == "AI Matching":
 
@@ -207,34 +211,36 @@ elif selected == "AI Matching":
 
     else:
 
-        matches = match_volunteers(volunteers_df,tasks_df)
+        matches = match_volunteers(volunteers_df, tasks_df)
 
-        st.dataframe(pd.DataFrame(matches))
+        matches_df = pd.DataFrame(matches)
+
+        st.dataframe(matches_df)
+
+
+        # Select task for AI recommendation
         task_name = tasks_df.iloc[0]["task_name"]
 
-# get volunteers matched to the first task
         matched_volunteers = [
-    m["volunteer"] for m in matches
-    if m["task"] == task_name
-]
+            m["volunteer"] for m in matches
+            if m["task"] == task_name
+        ]
 
         if st.button("AI Recommendation"):
 
             suggestion = ai_recommendation(
-            task_name,
-            matched_volunteers
-        )
-
+                task_name,
+                matched_volunteers
+            )
 
             st.markdown(
                 f"### 🤖 AI Recommendation\n\n{suggestion}"
             )
 
 
-
-# ==========================
+# ================================
 # Dashboard Section
-# ==========================
+# ================================
 
 elif selected == "Dashboard":
 
@@ -244,16 +250,15 @@ elif selected == "Dashboard":
     tasks_df = get_tasks()
     resources_df = get_resources()
 
-    col1,col2,col3 = st.columns(3)
+    col1, col2, col3 = st.columns(3)
 
-    col1.metric("Volunteers",len(volunteers_df))
-    col2.metric("Tasks",len(tasks_df))
-    col3.metric("Resources",len(resources_df))
+    col1.metric("Volunteers", len(volunteers_df))
+    col2.metric("Tasks", len(tasks_df))
+    col3.metric("Resources", len(resources_df))
 
 
     if not volunteers_df.empty:
 
         st.subheader("Volunteer Map")
 
-        show_map(volunteers_df)
         show_map(volunteers_df)
