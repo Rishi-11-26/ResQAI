@@ -1,0 +1,5 @@
+streamlit
+pandas
+streamlit-option-menu
+google-genai
+python-dotenv
