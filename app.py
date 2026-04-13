@@ -14,7 +14,12 @@ from disaster_map import show_map
 from dotenv import load_dotenv
 import os
 load_dotenv()
-setup_gemini(os.getenv("GEMINI_API_KEY"))
+import streamlit as st
+import os
+
+api_key = os.getenv("GEMINI_API_KEY") or st.secrets.get("GEMINI_API_KEY")
+
+setup_gemini(api_key)
 
 
 st.set_page_config(page_title="ResQAI", layout="wide")
@@ -250,4 +255,5 @@ elif selected == "Dashboard":
 
         st.subheader("Volunteer Map")
 
+        show_map(volunteers_df)
         show_map(volunteers_df)
